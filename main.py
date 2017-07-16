@@ -3,6 +3,7 @@ from decouple import config
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import NoSuchElementException
 from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
 
 email = config('FACEBOOK_EMAIL')
 password = config('FACEBOOK_PASSWORD')
@@ -45,9 +46,23 @@ more = driver.find_element_by_link_text('Mostrar mais')
 
 while more:
     pubs = BeautifulSoup(driver.page_source, 'html.parser')
-    for pub in pubs.find_all(class_='bp cd ce'):
-        print(pub.text)
+    try:
+        main_window = driver.current_window_handle
 
+        for pub in pubs.find_all(class_='bp cd ce'):
+            reaction_link = pub.find('a', text='Curtir').find_previous_sibling('a').get('href')
+        
+            driver.execute_script('window.open("{0}");'.format(reaction_link))
+            time.sleep(4)
+            driver.switch_to_window(driver.window_handles[1])
+            time.sleep(4)
+            driver.find_element_by_xpath('//div[@id="add_comment_switcher_placeholder"]/following-sibling::div/a').click()
+            time.sleep(4)
+            #driver.find_element_by_tag_name('div').send_keys(Keys.CONTROL+"w")
+            driver.switch_to_window(main_window)
+    except:
+        #the publication does have any reactions
+        pass
     try:
         more = driver.find_element_by_link_text('Mostrar mais')
         more.click()
