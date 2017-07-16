@@ -1,4 +1,5 @@
 import time
+import json
 from decouple import config
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import NoSuchElementException
@@ -7,8 +8,8 @@ from selenium.webdriver.common.keys import Keys
 
 email = config('FACEBOOK_EMAIL')
 password = config('FACEBOOK_PASSWORD')
-
 driver = webdriver.Firefox()
+data = {}
 
 driver.get("http://m.facebook.com/")
 print("Connected with facebook")
@@ -49,14 +50,39 @@ while more:
         
         for pub in pubs.find_all('a', text='Curtir'):
             reaction_link = pub.find_previous_sibling('a').get('href')
-            print(reaction_link)
 
             driver.execute_script('window.open("{0}");'.format(reaction_link))
             time.sleep(4)
             driver.switch_to_window(driver.window_handles[1])
             time.sleep(4)
+            pub_date = driver.find_element_by_xpath('//abbr[1]').text
+
+            data[pub_date] = {}
+
             driver.find_element_by_xpath('//div[@id="add_comment_switcher_placeholder"]/following-sibling::div/a').click()
             time.sleep(4)
+
+            try:
+                see_more = driver.find_element_by_link_text('Ver mais')
+            except:
+                see_more = 0
+            finally:
+                reactions = BeautifulSoup(driver.page_source, 'html.parser').find_all('li')
+
+            if see_more:
+                reactions = reactions[:len(reactions)-1]
+
+            for reaction in reactions:
+                reaction = reaction.find_all('img')[:2]
+                user_name = reaction[0].get('alt')
+                user_reaction = reaction[1].get('alt')
+
+                try:
+                    data[pub_date][user_reaction].append(user_name)
+                except:
+                    data[pub_date][user_reaction] = []
+                    data[pub_date][user_reaction].append(user_name)
+            driver.close()
             driver.switch_to_window(main_window)
     except:
         time.sleep(4)
@@ -68,4 +94,8 @@ while more:
         time.sleep(2)
     except:
         more = 0
-driver.close() 
+driver.close()
+
+with open('facebook_data.json', 'w') as fb_data:
+    json.dump(data, fb_data)
+
