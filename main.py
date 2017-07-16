@@ -6,26 +6,37 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 
-email = config('FACEBOOK_EMAIL')
-password = config('FACEBOOK_PASSWORD')
+#set the variables to be used on script
+email = config('FACEBOOK_EMAIL') 
+password = config('FACEBOOK_PASSWORD') 
 driver = webdriver.Firefox()
-data = {}
+data = {} # set a dict to store all publications reactions data
 
+#connect with facebook
 driver.get("http://m.facebook.com/")
 print("Connected with facebook")
 time.sleep(2)
 
+#get the email field
 email_field = driver.find_element_by_name('email')
 email_field.clear()
+
+#insert the email
 email_field.send_keys(email)
 print("Email inserted")
-    
+
+#get the password field
 pass_field = driver.find_element_by_name('pass') 
 pass_field.clear()
+
+#insert the password
 pass_field.send_keys(password)
 print("Password inserted")
-    
+
+#get the login button
 login_button = driver.find_element_by_name('login')
+
+#click on login button
 login_button.click()
 print("Button login clicked.")
 time.sleep(2)
@@ -33,34 +44,51 @@ time.sleep(2)
 ok_button = driver.find_element_by_xpath('//input[@value="OK"]').click()
 print("Ok pressed in Entry on touch page.")
 time.sleep(2)
-    
+
+#send to user perfil
 perfil = driver.find_element_by_link_text('Perfil').click()
 print("Entry on Perfil.")
 time.sleep(2)
 
+#select the year to be catch all publications
 year = driver.find_element_by_link_text('2017').click()
-time.sleep(4)
+time.sleep(2)
 
+#the "See More" link
 more = driver.find_element_by_link_text('Mostrar mais')
 
+
+#while the "See More" is on the page catch all publications
 while more:
-    pubs = BeautifulSoup(driver.page_source, 'html.parser')
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+
     try:
+        #get all publications
+        publications = soup.find_all('a', text='Curtir')
+
+        #get the main window
         main_window = driver.current_window_handle
         
-        for pub in pubs.find_all('a', text='Curtir'):
-            reaction_link = pub.find_previous_sibling('a').get('href')
+        for publication in publications:
 
+            #get the link of publication reactions 
+            reaction_link = publication.find_previous_sibling('a').get('href')
+
+            #got to the publication detail
             driver.execute_script('window.open("{0}");'.format(reaction_link))
-            time.sleep(4)
+            time.sleep(2)
             driver.switch_to_window(driver.window_handles[1])
-            time.sleep(4)
+            time.sleep(2)
+
+            #get the publication date
             pub_date = driver.find_element_by_xpath('//abbr[1]').text
 
+            #make a publication dict
             data[pub_date] = {}
 
+            #click the link of the list of reactions
             driver.find_element_by_xpath('//div[@id="add_comment_switcher_placeholder"]/following-sibling::div/a').click()
-            time.sleep(4)
+            time.sleep(2)
 
             try:
                 see_more = driver.find_element_by_link_text('Ver mais')
@@ -82,11 +110,12 @@ while more:
                 except:
                     data[pub_date][user_reaction] = []
                     data[pub_date][user_reaction].append(user_name)
+
             driver.close()
             driver.switch_to_window(main_window)
     except:
-        time.sleep(4)
-        #the publication does have any reactions
+        #if the publication does have any reactions
+        time.sleep(2)
         pass
     try:
         more = driver.find_element_by_link_text('Mostrar mais')
@@ -94,8 +123,8 @@ while more:
         time.sleep(2)
     except:
         more = 0
+
 driver.close()
 
 with open('facebook_data.json', 'w') as fb_data:
     json.dump(data, fb_data)
-
