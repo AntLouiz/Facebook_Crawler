@@ -1,0 +1,6 @@
+
+python-decouple==3.0
+
+selenium==3.4.3
+
+beautifulsoup4==4.6.0
