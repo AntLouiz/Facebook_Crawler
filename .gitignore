@@ -46,6 +46,8 @@ coverage.xml
 .hypothesis/
 
 *.png
+*.swp
+*.env
 *.log
 # Translations
 *.mo

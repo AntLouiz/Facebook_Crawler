@@ -1,10 +1,11 @@
 import time
+from decouple import config
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import NoSuchElementException
 from selenium import webdriver
 
-email = "luizrodrigo46@hotmail.com"
-password = "ds12345"
+email = config('FACEBOOK_EMAIL')
+password = config('FACEBOOK_PASSWORD')
 
 driver = webdriver.Firefox()
 
