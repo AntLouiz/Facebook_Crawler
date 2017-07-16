@@ -9,8 +9,14 @@ from selenium.webdriver.common.keys import Keys
 
 def start_crawl():
     #set the variables to be used on script
-    email = config('FACEBOOK_EMAIL') 
-    password = config('FACEBOOK_PASSWORD') 
+    email = config('FACEBOOK_EMAIL', default=False) 
+    password = config('FACEBOOK_PASSWORD', default=False) 
+
+    if not email:
+        email = str(input("Insert your facebook email: "))
+    if not password:
+        password = str(input("Insert your facebook password: "))
+
     driver = webdriver.Firefox()
     data = {} # set a dict to store all publications reactions data
 
