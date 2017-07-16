@@ -2,8 +2,8 @@ import time
 import json
 from decouple import config
 from bs4 import BeautifulSoup
-from selenium.common.exceptions import NoSuchElementException
 from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 
 #set the variables to be used on script
