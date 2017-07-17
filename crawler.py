@@ -139,7 +139,7 @@ def start_crawl():
 
             except:
                 #if the publication does have any reactions
-                data[pub_date] = {'Ninguem curtiu': '0'}
+                data[pub_date] = {'Ninguem curtiu': ['0']}
 
             print(
                 "---------> A NEW PUBLICATION SCRAPED: \n{0}".format(
