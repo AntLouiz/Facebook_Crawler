@@ -70,65 +70,84 @@ def start_crawl():
     while more:
         soup = BeautifulSoup(driver.page_source, 'html.parser')
 
-        try:
-            #get all publications
-            publications = soup.find_all('a', text='Curtir')
+        #get all publications
+        publications = soup.find_all('a', text='Curtir')
 
-            #get the main window
-            main_window = driver.current_window_handle
-            
-            for publication in publications:
+        #get the main window
+        main_window = driver.current_window_handle
 
+        for publication in publications:
+
+            #get the publication date
+            pub_date = driver.find_element_by_xpath('//abbr[1]').text
+
+            #make a publication dict
+            data[pub_date] = {}
+
+            try:
                 #get the link of publication reactions 
                 reaction_link = publication.find_previous_sibling('a').get('href')
 
                 #got to the publication detail
+                time.sleep(3)
                 driver.execute_script('window.open("{0}");'.format(reaction_link))
                 time.sleep(2)
+
+                #switch to the new open tab
                 driver.switch_to_window(driver.window_handles[1])
                 time.sleep(2)
 
-                #get the publication date
-                pub_date = driver.find_element_by_xpath('//abbr[1]').text
+         
+                #click on the link of list of reactions
+                driver.find_element_by_xpath(
+                    '//div[@id="add_comment_switcher_placeholder"]/following-sibling::div/a'
+                ).click()
 
-                #make a publication dict
-                data[pub_date] = {}
-
-                #click the link of the list of reactions
-                driver.find_element_by_xpath('//div[@id="add_comment_switcher_placeholder"]/following-sibling::div/a').click()
-                time.sleep(2)
-
-                try:
-                    see_more = driver.find_element_by_link_text('Ver mais')
-                except:
-                    see_more = 0
-                finally:
+                while True:
+                    time.sleep(4)
                     reactions = BeautifulSoup(driver.page_source, 'html.parser').find_all('li')
 
-                if see_more:
-                    reactions = reactions[:len(reactions)-1]
-
-                for reaction in reactions:
-                    reaction = reaction.find_all('img')[:2]
-                    user_name = reaction[0].get('alt')
-                    user_reaction = reaction[1].get('alt')
-
                     try:
-                        data[pub_date][user_reaction].append(user_name)
-                    except:
-                        data[pub_date][user_reaction] = []
-                        data[pub_date][user_reaction].append(user_name)
+                        see_more = driver.find_element_by_link_text('Ver mais')
+                        reactions = reactions[:len(reactions)-1]
 
+                    except:
+                        see_more = 0
+
+                    for reaction in reactions:
+                        reaction = reaction.find_all('img')[:2]
+                        user_name = reaction[0].get('alt')
+                        user_reaction = reaction[1].get('alt')
+
+                        try:
+                            data[pub_date][user_reaction].append(user_name)
+
+                        except KeyError:
+                            data[pub_date][user_reaction] = []
+                            data[pub_date][user_reaction].append(user_name)
+
+                    if see_more:
+                        see_more.click()
+                        time.sleep(4)
+
+                    else:
+                        break
+                        
+                time.sleep(3)
                 driver.close()
                 driver.switch_to_window(main_window)
-        except:
-            #if the publication does have any reactions
-            time.sleep(2)
-            pass
+
+            except:
+                #if the publication does have any reactions
+                data[pub_date] = 'Ninguem curtiu'
+
+            print(data[pub_date])
+
         try:
             more = driver.find_element_by_link_text('Mostrar mais')
             more.click()
             time.sleep(2)
+
         except:
             more = 0
 
