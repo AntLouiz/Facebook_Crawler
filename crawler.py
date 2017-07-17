@@ -141,7 +141,11 @@ def start_crawl():
                 #if the publication does have any reactions
                 data[pub_date] = {'Ninguem curtiu': '0'}
 
-            print(data[pub_date])
+            print(
+                "---------> A NEW PUBLICATION SCRAPED: \n{0}".format(
+                    data[pub_date]
+            ))
+
 
         try:
             more = driver.find_element_by_link_text('Mostrar mais')
