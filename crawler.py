@@ -132,14 +132,14 @@ def start_crawl():
 
                     else:
                         break
-                        
+
                 time.sleep(3)
                 driver.close()
                 driver.switch_to_window(main_window)
 
             except:
                 #if the publication does have any reactions
-                data[pub_date] = 'Ninguem curtiu'
+                data[pub_date] = {'Ninguem curtiu': '0'}
 
             print(data[pub_date])
 
