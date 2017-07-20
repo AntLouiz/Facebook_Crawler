@@ -23,8 +23,7 @@ def start_crawl():
     #connect with facebook
     driver.get("http://m.facebook.com/")
     print("Connected with facebook")
-    time.sleep(2)
-
+    
     #get the email field
     email_field = driver.find_element_by_name('email')
     email_field.clear()
@@ -51,16 +50,13 @@ def start_crawl():
 
     ok_button = driver.find_element_by_xpath('//input[@value="OK"]').click()
     print("Ok pressed in Entry on touch page.")
-    time.sleep(2)
 
     #send to user perfil
     perfil = driver.find_element_by_link_text('Perfil').click()
     print("Entry on Perfil.")
-    time.sleep(2)
 
     #select the year to be catch all publications
-    year = driver.find_element_by_link_text('2017').click()
-    time.sleep(2)
+    year = driver.find_element_by_link_text('2016').click()
 
     #the "See More" link
     more = driver.find_element_by_link_text('Mostrar mais')
@@ -89,13 +85,12 @@ def start_crawl():
                 reaction_link = publication.find_previous_sibling('a').get('href')
 
                 #got to the publication detail
-                time.sleep(3)
                 driver.execute_script('window.open("{0}");'.format(reaction_link))
-                time.sleep(2)
+                time.sleep(1)
 
                 #switch to the new open tab
                 driver.switch_to_window(driver.window_handles[1])
-                time.sleep(2)
+                time.sleep(1)
 
          
                 #click on the link of list of reactions
@@ -104,7 +99,7 @@ def start_crawl():
                 ).click()
 
                 while True:
-                    time.sleep(4)
+                    time.sleep(1)
                     reactions = BeautifulSoup(driver.page_source, 'html.parser').find_all('li')
 
                     try:
@@ -128,12 +123,10 @@ def start_crawl():
 
                     if see_more:
                         see_more.click()
-                        time.sleep(4)
 
                     else:
                         break
 
-                time.sleep(3)
                 driver.close()
                 driver.switch_to_window(main_window)
 
@@ -150,7 +143,6 @@ def start_crawl():
         try:
             more = driver.find_element_by_link_text('Mostrar mais')
             more.click()
-            time.sleep(2)
 
         except:
             more = 0
