@@ -2,9 +2,27 @@ import time
 import json
 from decouple import config
 from bs4 import BeautifulSoup
+from pymongo import MongoClient
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
+
+
+#date_regex = re.compile(r'^(\d+) de (\w+) às ((\d+):(\d+))$')
+#time_regex = re.compile(r'^(\d+) (\w+)|Ontem às (\d+):(\d+)$')
+
+class NoReactionException(Exception):
+    pass
+
+class PublicationExists(Exception):
+    pass
+
+
+conn = MongoClient('localhost', 27017)
+
+db = conn['facebook_reaction']
+
+timeline = db['timeline']
 
 
 def start_crawl():
@@ -18,7 +36,6 @@ def start_crawl():
         password = str(input("Insert your facebook password: "))
 
     driver = webdriver.Firefox()
-    data = {} # set a dict to store all publications reactions data
 
     #connect with facebook
     driver.get("http://m.facebook.com/")
@@ -56,10 +73,14 @@ def start_crawl():
     print("Entry on Perfil.")
 
     #select the year to be catch all publications
-    year = driver.find_element_by_link_text('2016').click()
+    year = driver.find_element_by_link_text('2012').click()
 
-    #the "See More" link
-    more = driver.find_element_by_link_text('Mostrar mais')
+
+    try:
+        #the "See More" link
+        more = driver.find_element_by_link_text('Mostrar mais')
+    except:
+        more = 1
 
 
     #while the "See More" is on the page catch all publications
@@ -74,15 +95,32 @@ def start_crawl():
 
         for publication in publications:
 
-            #get the publication date
-            pub_date = driver.find_element_by_xpath('//abbr[1]').text
+            try:
+                #get the publication date
+                pub_date = driver.find_element_by_xpath('//abbr[1]').text
+
+            except:
+                continue
 
             #make a publication dict
-            data[pub_date] = {}
+            pub = {}
 
             try:
                 #get the link of publication reactions 
-                reaction_link = publication.find_previous_sibling('a').get('href')
+                reaction_link = publication.find_previous_sibling('a')
+
+                if reaction_link:
+                    reaction_link = reaction_link.get('href')
+                else:
+                    raise NoReactionException
+
+                pub['_id'] = reaction_link
+                pub['reaction_link'] = reaction_link
+                pub['date'] = pub_date
+                pub['reactions'] = {}
+
+                if timeline.find_one(pub['_id']):
+                    raise PublicationExists
 
                 #got to the publication detail
                 driver.execute_script('window.open("{0}");'.format(reaction_link))
@@ -115,11 +153,11 @@ def start_crawl():
                         user_reaction = reaction[1].get('alt')
 
                         try:
-                            data[pub_date][user_reaction].append(user_name)
+                            pub['reactions'][user_reaction].append(user_name)
 
                         except KeyError:
-                            data[pub_date][user_reaction] = []
-                            data[pub_date][user_reaction].append(user_name)
+                            pub['reactions'][user_reaction] = []
+                            pub['reactions'][user_reaction].append(user_name)
 
                     if see_more:
                         see_more.click()
@@ -129,15 +167,25 @@ def start_crawl():
 
                 driver.close()
                 driver.switch_to_window(main_window)
+                timeline.insert_one(pub)
 
-            except:
+            except PublicationExists:
                 #if the publication does have any reactions
-                data[pub_date] = {'Ninguem curtiu': ['0']}
+                print("---------> THE PUBLICATION IS ALREADY IN DATABASE.")
 
-            print(
-                "---------> A NEW PUBLICATION SCRAPED: \n{0}".format(
-                    data[pub_date]
-            ))
+            except NoReactionException:
+                pub['reactions'] = {'0':'Ninguem Curtiu'}
+                timeline.insert_one(pub)
+                print(
+                    "---------> A NEW PUBLICATION SCRAPED: \n{0}".format(
+                        pub
+                ))
+
+            else:
+                print(
+                    "---------> A NEW PUBLICATION SCRAPED: \n{0}".format(
+                        pub
+                ))
 
 
         try:
@@ -149,10 +197,5 @@ def start_crawl():
 
     driver.close()
 
-    return data
-
 if __name__ == '__main__':
-    data = start_crawl()
-
-    with open('facebook_data.json', 'w') as fb_data:
-        json.dump(data, fb_data)
+    start_crawl()
