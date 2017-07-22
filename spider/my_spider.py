@@ -5,27 +5,37 @@ import settings
 from decouple import config
 from pymongo import MongoClient
 from bs4 import BeautifulSoup
-from utils import _get_publications
+from utils import _get_reactions
+from decorators.auth import login_required
 
-def check_login(method):
-
-    def check(self, *args):
-        if self.logged:
-            return method(self, *args)
-        else:
-            logging.warn("YOU MUST SIGN ON FACEBOOK.")
-
-    return check
-
-class My_spider:
-    logging.getLogger().setLevel(logging.INFO)
+class My_Spider:
+    logging.basicConfig(
+        level=logging.INFO, 
+        format='%(asctime)s %(levelname)s: %(message)s',
+        datefmt='%a, %d %b %Y %H:%M:%S',
+    )
 
     def __init__(self, collection):
         self.collection = collection
-        self.url = 'https://m.facebook.com'
+        self.start_url = 'https://m.facebook.com'
+        self.used_urls = []
+        self.logged = False
         self.session = requests.session()
         self.session.headers.update(settings.USER_AGENT)
-        self.logged = False
+
+    def _set_url(self, url):
+        full_url = "{0}{1}".format(self.start_url, url)
+
+        if full_url not in self.used_urls:
+            self.used_urls.append(full_url)
+        
+        return full_url
+
+    def get(self, url):
+        full_url = self._set_url(url)
+        page_response = self.session.get(full_url)
+
+        return page_response
 
     def login(self, email, password):
         logging.info("TRYING TO SIGN IN ON FACEBOOK...")
@@ -35,7 +45,7 @@ class My_spider:
             'pass': password
         }, allow_redirects=False)
 
-        page = self.session.get('https://m.facebook.com/home.php')
+        page = self.get('/home.php')
         parser = BeautifulSoup(page.content, 'html.parser')
 
         if not parser.find('a', text='Página inicial'):
@@ -47,38 +57,46 @@ class My_spider:
         self.logged = True
         return True
 
-    @check_login
+    @login_required
     def crawl(self, *args):
-        home_page = self.session.get('https://m.facebook.com/home.php')
+        home_page = self.get('/home.php')
         parser = BeautifulSoup(home_page.content, 'html.parser')
 
-        return self.parser_perfil(parser)
 
-    @check_login
+        for i in self.parser_perfil(parser):
+            print(i)
+            next(i)
+
+        logging.info("FINISHED THE FACEBOOK CRAWL .")
+        return True
+
+    @login_required
     def parser_perfil(self, base_parser):
-        perfil_link = base_parser.find('a', text='Perfil')
+        perfil_url = base_parser.find('a', text='Perfil').get('href')
 
-        perfil_page = self.session.get("https://m.facebook.com{0}".format(perfil_link.get('href')))
+        perfil_page = self.get(perfil_url)
         parser = BeautifulSoup(perfil_page.content, 'html.parser')
         logging.info("Entering in the user perfil page.")
 
-        return self.parser_all_publications(parser)
+        yield self.parser_all_publications(parser)
 
-    @check_login
+    @login_required
     def parser_all_publications(self, base_parser):
         all_years_links = base_parser.find_all('a', {'href':re.compile('yearSectionsYears')})
 
         for year_link in all_years_links:
+            year_url = year_link.get('href')
+
             logging.info("SCRAPPING ALL PUBLICATIONS OF {0}".format(year_link.text))
 
             # enter in the year publications page
-            page = self.session.get("https://m.facebook.com{0}".format(year_link.get('href')))
+            page = self.get(year_url)
             parse = BeautifulSoup(page.content, 'html.parser')
 
             #get all publications of the year
-            return self.parser_publication_detail(parse)
+            yield self.parser_publication_detail(parse)
 
-    @check_login
+    @login_required
     def parser_publication_detail(self, base_parser):
         see_more = 1
         
@@ -87,11 +105,11 @@ class My_spider:
             
             for pub in all_publications:
                 # enter in the publication page detail
-                page = self.session.get("https://m.facebook.com{0}".format(pub.get('href')))
+                pub_link = pub.get('href')
+                page = self.get(pub_link)
                 parser = BeautifulSoup(page.content, 'html.parser')
-                pub_data = {}
-
                 pub_date = parser.find('abbr').text
+                pub_data = {}
                     
                 # get the reactions link
                 reactions = parser.find('a', {'href':re.compile('/ufi/reaction/profile/browser/')})
@@ -127,13 +145,11 @@ class My_spider:
                 see_more_parser = base_parser.find('a', text='Mostrar mais')
                 if see_more_parser:
                     see_more_link = see_more_parser.get('href')
-                    page = self.session.get("https://m.facebook.com{0}".format(see_more_link))
+                    page = self.get(see_more_link)
                     parser = BeautifulSoup(page.content, 'html.parser')
                 else:
                     see_more = 0
-
-        logging.info("FINISHED THE FACEBOOK CRAWL .")
-        return 1
+        return True
 
 if __name__ == '__main__':
 
@@ -143,6 +159,9 @@ if __name__ == '__main__':
 
     timeline = db['timeline']
 
-    spider = My_spider(timeline)
-    spider.login('luizrodrigo46@hotmail.com', 'luiz05012015')
+    facebook_email = config('FACEBOOK_EMAIL', default=False) 
+    facebook_password = config('FACEBOOK_PASSWORD', default=False)
+
+    spider = My_Spider(timeline)
+    spider.login(facebook_email, facebook_password)
     spider.crawl()
