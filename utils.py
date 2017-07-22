@@ -5,11 +5,26 @@ from decouple import config
 from pymongo import MongoClient
 from bs4 import BeautifulSoup
 
-def get_publications(session, collection, parser):
+
+def get_all_publications(session, collection, parser):
+    all_years_links = parser.find_all('a', {'href':re.compile('yearSectionsYears')})
+
+    for year_link in all_years_links:
+
+        logging.info("SCRAPPING ALL PUBLICATIONS OF {0}".format(year_link.text))
+
+        # enter in the year publications page
+        page = session.get("https://m.facebook.com{0}".format(year_link.get('href')))
+        parse = BeautifulSoup(page.content, 'html.parser')
+
+        #get all publications of the year
+        _get_publications(session, collection, parse)
+
+def _get_publications(session, collection, base_parser):
         see_more = 1
         
         while see_more:
-            all_publications = parser.find_all('a', text='História completa') # get all page publications
+            all_publications = base_parser.find_all('a', text='História completa') # get all page publications
             
             for pub in all_publications:
                 # enter in the publication page detail
@@ -35,7 +50,7 @@ def get_publications(session, collection, parser):
                     pub_data['reactions'] = {}
 
                     pub_db = collection.find_one(pub_data['_id'])
-                    pub_data = get_reactions(session, reactions_link, pub_data)
+                    pub_data = _get_reactions(session, reactions_link, pub_data)
 
                     if pub_db:  
                         if pub_db != pub_data:
@@ -50,18 +65,18 @@ def get_publications(session, collection, parser):
                     collection.insert_one(pub_data).inserted_id
                     logging.info("PUBLICATION SCRAPED.\n{0}".format(pub_data))
 
-                see_more_parser = parser.find('a', text='Mostrar mais')
+                see_more_parser = base_parser.find('a', text='Mostrar mais')
                 if see_more_parser:
                     see_more_link = see_more_parser.get('href')
-                    year_page = session.get("https://m.facebook.com{0}".format(see_more_link))
-                    parser = BeautifulSoup(year_page.content, 'html.parser')
+                    page = session.get("https://m.facebook.com{0}".format(see_more_link))
+                    parser = BeautifulSoup(page.content, 'html.parser')
                 else:
                     see_more = 0
-                    
+
         logging.info("FINISHED THE FACEBOOK CRAWL .")
         return 1
 
-def get_reactions(session, reactions_link, publication):
+def _get_reactions(session, reactions_link, publication):
     # enter in the publication reactions list
     page = session.get("https://m.facebook.com{0}".format(reactions_link))
     parser = BeautifulSoup(page.content, 'html.parser')

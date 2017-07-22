@@ -1,17 +1,14 @@
 import requests
 import re
 import logging
+import settings
 from decouple import config
 from pymongo import MongoClient
 from bs4 import BeautifulSoup
-from utils import get_publications, get_reactions
+from utils import get_all_publications
 
-
-def start_craw(session, collection, email, password):
+def start_crawl(session, collection, email, password):
     logging.getLogger().setLevel(logging.INFO)
-
-    reponse = session.get('https://m.facebook.com')
-    logging.info("Connected with Facebook")
 
     response = session.post('https://m.facebook.com/login.php', data={
         'email': facebook_email,
@@ -20,30 +17,16 @@ def start_craw(session, collection, email, password):
 
     logging.debug("User logged in.")
 
-    home_page = session.get('https://m.facebook.com/home.php')
+    page = session.get('https://m.facebook.com/home.php')
+    parser = BeautifulSoup(page.content, 'html.parser')
+    print(parser)
 
-    home_parser = BeautifulSoup(home_page.content, 'html.parser')
+    perfil_link = parser.find('a', text='Perfil')
+    perfil_page = session.get("https://m.facebook.com{0}".format(perfil_link.get('href')))
+    perfil_parser = BeautifulSoup(perfil_page.content, 'html.parser')
+    logging.info("Entering in the user perfil page.")
 
-    home_link = home_parser.find_all('a')
-
-    for link in home_link:
-        if link.text == 'Perfil':
-            perfil_page = session.get("https://m.facebook.com{0}".format(link.get('href')))
-            perfil_parser = BeautifulSoup(perfil_page.content, 'html.parser')
-
-            logging.info("Entering in the user perfil page.")
-            break
-
-    years_links = perfil_parser.find_all('a', {'href':re.compile('yearSectionsYears')})
-
-    for year_link in years_links:
-
-        logging.info("SCRAPPING ALL PUBLICATIONS OF {0}".format(year_link.text))
-        # enter in the year publications page
-        year_page = session.get("https://m.facebook.com{0}".format(year_link.get('href')))
-        year_parser = BeautifulSoup(year_page.content, 'html.parser')
-
-        get_publications(session, collection, year_parser)
+    get_all_publications(session, collection, perfil_parser)
 
 if __name__ == '__main__':
     facebook_session = requests.session()
@@ -61,7 +44,7 @@ if __name__ == '__main__':
 
     timeline = db['timeline']
 
-    start_craw(
+    start_crawl(
         facebook_session,
         timeline,
         facebook_email,
