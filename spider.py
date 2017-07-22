@@ -4,8 +4,10 @@ import logging
 from decouple import config
 from pymongo import MongoClient
 from bs4 import BeautifulSoup
+from utils import get_publications, get_reactions
 
-def start_craw(session, email, password, collection):
+
+def start_craw(session, collection, email, password):
     logging.getLogger().setLevel(logging.INFO)
 
     reponse = session.get('https://m.facebook.com')
@@ -36,83 +38,12 @@ def start_craw(session, email, password, collection):
 
     for year_link in years_links:
 
-        logging.info("SCRAPPING ALL PUBLICATIONS OF {}".format(year_link.text))
+        logging.info("SCRAPPING ALL PUBLICATIONS OF {0}".format(year_link.text))
         # enter in the year publications page
         year_page = session.get("https://m.facebook.com{0}".format(year_link.get('href')))
         year_parser = BeautifulSoup(year_page.content, 'html.parser')
 
-
-        see_more = 1
-        
-        while see_more:
-            pubs = year_parser.find_all('a', text='História completa') # get all page publications
-            
-            for pub in pubs:
-                # enter in the publication page detail
-                pub_page = session.get("https://m.facebook.com{0}".format(pub.get('href')))
-                pub_parser = BeautifulSoup(pub_page.content, 'html.parser')
-                publication = {}
-
-                pub_date = pub_parser.find('abbr').text
-                    
-                
-                # get the reactions link
-                reactions = pub_parser.find('a', {'href':re.compile('/ufi/reaction/profile/browser/')})
-
-                  
-                if reactions:
-                    if not reactions.text:
-                        reaction_type = "None"
-                        reaction_user = "None"
-
-                    reactions_link = reactions.get('href')
-
-                    publication['_id'] = reactions_link
-                    publication['date'] = pub_date
-                    publication['reactions'] = {}
-                    
-                    # enter in the publication reactions list
-                    reactions_page = session.get("https://m.facebook.com{0}".format(reactions_link))
-                    reactions_parse = BeautifulSoup(reactions_page.content, 'html.parser')
-                    
-                    reactions_see_more = 1
-                    while reactions_see_more:                
-                        for reaction in reactions_parse.find_all('li'):
-                            # get the reaction type and the user that make this reaction
-                            try:
-                                reaction_type = reaction.img.next_element('img')[0].get('alt')
-                                reaction_user = reaction.img.get('alt')
-                                try:
-                                    publication['reactions'][reaction_type].append(reaction_user)
-
-                                except KeyError:
-                                    publication['reactions'][reaction_type] = []
-                                    publication['reactions'][reaction_type].append(reaction_user)
-                                
-                            except:
-                                pass
-                        
-                        reactions_see_more_parser = reactions_parse.find('a', text='Ver mais')
-                        if reactions_see_more_parser:
-                            reactions_link = reactions_see_more_parser.get('href')
-                            reactions_page = session.get("https://m.facebook.com{0}".format(reactions_link))
-                            reactions_parse = BeautifulSoup(reactions_page.content, 'html.parser')
-                        else:
-                            reactions_see_more = 0
-
-                        #raise NotImplementedError
-                logging.info("PUBLICATION SCRAPED.\n{0}".format(publication))
-
-                see_more_parser = year_parser.find('a', text='Mostrar mais')
-                if see_more_parser:
-                    see_more_link = see_more_parser.get('href')
-                    year_page = session.get("https://m.facebook.com{0}".format(see_more_link))
-                    year_parser = BeautifulSoup(year_page.content, 'html.parser')
-                else:
-                    see_more = 0
-
-    logging.info("FINISHED THE FACEBOOK CRAWL .")
-    return 1
+        get_publications(session, collection, year_parser)
 
 if __name__ == '__main__':
     facebook_session = requests.session()
@@ -132,7 +63,7 @@ if __name__ == '__main__':
 
     start_craw(
         facebook_session,
+        timeline,
         facebook_email,
         facebook_password,
-        timeline
     )
