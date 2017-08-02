@@ -60,8 +60,7 @@ class FacebookSpider:
         home_page = self.get('/home.php')
         parser = BeautifulSoup(home_page.content, 'html.parser')
 
-        for iterator in self.parser_perfil(parser):
-            next(iterator)
+        self.parser_perfil(parser)
 
         logging.info("FINISHED THE FACEBOOK CRAWL .")
         return True
@@ -74,10 +73,12 @@ class FacebookSpider:
         parser = BeautifulSoup(perfil_page.content, 'html.parser')
         logging.info("Entering in the user perfil page.")
 
-        return self.parser_all_publications(parser)
+        self.parser_years_publications(parser)
+
+        return True
 
     @login_required
-    def parser_all_publications(self, base_parser):
+    def parser_years_publications(self, base_parser):
         all_years_links = base_parser.find_all('a', {'href':re.compile('yearSectionsYears')})
 
         for year_link in all_years_links:
@@ -87,13 +88,15 @@ class FacebookSpider:
 
             # enter in the year publications page
             page = self.get(year_url)
-            parse = BeautifulSoup(page.content, 'html.parser')
+            parser = BeautifulSoup(page.content, 'html.parser')
 
             #get all publications of the year
-            yield self.parser_publication_detail(parse)
+            self.parser_timeline(parser)
+            
+        return True
 
     @login_required
-    def parser_publication_detail(self, base_parser):
+    def parser_timeline(self, base_parser):
         see_more = 1
         
         while see_more:
