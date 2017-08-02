@@ -21,7 +21,7 @@ class FacebookSpider:
         self.session = requests.session()
         self.session.headers.update(settings.USER_AGENT)
 
-    def _set_url(self, url):
+    def get_full_url(self, url):
         full_url = "{0}{1}".format(self.start_url, url)
 
         if full_url not in self.used_urls:
@@ -30,7 +30,7 @@ class FacebookSpider:
         return full_url
 
     def get(self, url):
-        full_url = self._set_url(url)
+        full_url = self.get_full_url(url)
         page_response = self.session.get(full_url)
 
         return page_response
@@ -60,8 +60,8 @@ class FacebookSpider:
         home_page = self.get('/home.php')
         parser = BeautifulSoup(home_page.content, 'html.parser')
 
-        for gen in self.parser_perfil(parser):
-            next(gen)
+        for iterator in self.parser_perfil(parser):
+            next(iterator)
 
         logging.info("FINISHED THE FACEBOOK CRAWL .")
         return True
@@ -74,7 +74,7 @@ class FacebookSpider:
         parser = BeautifulSoup(perfil_page.content, 'html.parser')
         logging.info("Entering in the user perfil page.")
 
-        yield self.parser_all_publications(parser)
+        return self.parser_all_publications(parser)
 
     @login_required
     def parser_all_publications(self, base_parser):
@@ -122,19 +122,19 @@ class FacebookSpider:
                     pub_data['date'] = pub_date
                     pub_data['reactions'] = {}
 
-                    pub_db = self.collection.find_one(pub_data['_id'])
+                    pub_database = self.collection.find_one(pub_data['_id'])
                     pub_data = _get_reactions(self.session, reactions_link, pub_data)
 
-                    if pub_db:  
-                        if pub_db != pub_data:
-                            self.collection.update(pub_db, pub_data)
-                            logging.info("PUBLICATION SCRAPED.\n{0}".format(pub_data))
+                    if pub_database:  
+                        if pub_database != pub_data:
+                            self.collection.update(pub_database, pub_data)
+                            logging.info("PUBLICATION UPDATED.\n{0}".format(pub_data))
                         else:
                             logging.info("THE PUBLICATION HAS ALREADY BEEN SCRAPED.")
                     else:
                         logging.info("PUBLICATION SCRAPED.\n{0}".format(pub_data))
                 
-                if not pub_db:
+                if not pub_database:
                     self.collection.insert_one(pub_data).inserted_id
                     logging.info("PUBLICATION SCRAPED.\n{0}".format(pub_data))
 
