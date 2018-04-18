@@ -101,7 +101,6 @@ class FacebookSpider:
         
         while see_more:
             all_publications = base_parser.find_all('a', text='História completa') # get all page publications
-            
             for pub in all_publications:
                 # enter in the publication page detail
                 pub_link = pub.get('href')
@@ -113,7 +112,6 @@ class FacebookSpider:
                 # get the reactions link
                 reactions = parser.find('a', {'href':re.compile('/ufi/reaction/profile/browser/')})
 
-                  
                 if reactions:
                     if not reactions.text:
                         reaction_type = "None"
@@ -121,7 +119,12 @@ class FacebookSpider:
 
                     reactions_link = reactions.get('href')
 
-                    pub_data['_id'] = reactions_link
+                    pub_id = re.search(
+                        r'ft_ent_identifier=(\d+)',
+                        reactions_link
+                    )
+
+                    pub_data['_id'] = pub_id.group(1)
                     pub_data['date'] = pub_date
                     pub_data['reactions'] = {}
 
@@ -140,12 +143,13 @@ class FacebookSpider:
                 if not pub_database:
                     self.collection.insert_one(pub_data).inserted_id
                     logging.info("PUBLICATION SCRAPED.\n{0}".format(pub_data))
+                    print(pub_data)
 
-                see_more_parser = base_parser.find('a', text='Mostrar mais')
-                if see_more_parser:
-                    see_more_link = see_more_parser.get('href')
-                    page = self.get(see_more_link)
-                    parser = BeautifulSoup(page.content, 'html.parser')
-                else:
-                    see_more = 0
+            see_more_parser = base_parser.find('a', text='Mostrar mais')
+            if see_more_parser:
+                see_more_link = see_more_parser.get('href')
+                page = self.get(see_more_link)
+                base_parser = BeautifulSoup(page.content, 'html.parser')
+            else:
+                see_more = 0
         return True
