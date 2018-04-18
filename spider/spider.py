@@ -6,7 +6,12 @@ from bs4 import BeautifulSoup
 from spider.utils import _get_reactions
 from spider.decorators.auth import login_required
 
+
 class FacebookSpider:
+    """
+        A spider to crawl on the Facebook
+    """
+
     logging.basicConfig(
         level=logging.INFO, 
         format='%(asctime)s %(levelname)s: %(message)s',
