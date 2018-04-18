@@ -21,7 +21,7 @@ class FacebookSpider:
     def __init__(self, collection):
         self.collection = collection
         self.start_url = 'https://m.facebook.com'
-        self.logged = False
+        self.is_logged_in = False
         self.session = requests.session()
         self.session.headers.update(settings.USER_AGENT)
 
@@ -49,11 +49,11 @@ class FacebookSpider:
 
         if not parser.find('a', text='Página inicial'):
             logging.error("FAILED TO SIGN IN ON FACEBOOK.")
-            self.logged = False
+            self.is_logged_in = False
             return False
 
         logging.info("LOGIN SUCCESSFUL!")
-        self.logged = True
+        self.is_logged_in = True
         return True
 
     @login_required
