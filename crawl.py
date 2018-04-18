@@ -5,7 +5,7 @@ from spider.spider import FacebookSpider
 def start_crawl():
 	conn = MongoClient('localhost', 27017)
 
-	db = conn['facebook_reactions_database']
+	db = conn['facebook_reactions']
 
 	timeline = db['timeline']
 
