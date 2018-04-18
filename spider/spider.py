@@ -21,16 +21,12 @@ class FacebookSpider:
     def __init__(self, collection):
         self.collection = collection
         self.start_url = 'https://m.facebook.com'
-        self.used_urls = []
         self.logged = False
         self.session = requests.session()
         self.session.headers.update(settings.USER_AGENT)
 
     def get_full_url(self, url):
         full_url = "{0}{1}".format(self.start_url, url)
-
-        if full_url not in self.used_urls:
-            self.used_urls.append(full_url)
         
         return full_url
 
