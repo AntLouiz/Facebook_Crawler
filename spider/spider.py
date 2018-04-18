@@ -107,7 +107,8 @@ class FacebookSpider:
             parser = BeautifulSoup(page.content, 'html.parser')
 
             #get all publications of the year
-            self.parser_timeline(parser)
+            if parser:
+                self.parser_timeline(parser)
             
         return True
 
