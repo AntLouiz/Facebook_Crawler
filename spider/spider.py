@@ -31,6 +31,11 @@ class FacebookSpider:
         return full_url
 
     def get(self, url):
+        """
+            This method make a GET http request using a 
+            requests session.
+        """
+
         full_url = self.get_full_url(url)
         page_response = self.session.get(full_url)
 
@@ -68,6 +73,11 @@ class FacebookSpider:
 
     @login_required
     def parser_perfil(self, base_parser):
+        """
+            This parser search the user perfil page 
+            and go to the publications
+        """
+
         perfil_url = base_parser.find('a', text='Perfil').get('href')
 
         perfil_page = self.get(perfil_url)
@@ -80,6 +90,11 @@ class FacebookSpider:
 
     @login_required
     def parser_years_publications(self, base_parser):
+        """
+            This parser find all the publications years,
+            for each year the parser go to the timeline
+        """
+
         all_years_links = base_parser.find_all('a', {'href':re.compile('yearSectionsYears')})
 
         for year_link in all_years_links:
@@ -98,6 +113,10 @@ class FacebookSpider:
 
     @login_required
     def parser_timeline(self, base_parser):
+        """
+            This parser scrap all publications of a year.
+        """
+
         see_more = 1
         
         while see_more:
