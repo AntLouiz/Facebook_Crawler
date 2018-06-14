@@ -1,6 +1,7 @@
 import requests
 import re
 import logging
+from threading import Thread, Lock
 from spider import settings
 from bs4 import BeautifulSoup
 from spider.utils import _get_reactions
@@ -97,20 +98,29 @@ class FacebookSpider:
 
         all_years_links = base_parser.find_all('a', {'href':re.compile('yearSectionsYears')})
 
-        for year_link in all_years_links:
-            year_url = year_link.get('href')
+        print(len(all_years_links))
 
-            logging.info("SCRAPPING ALL PUBLICATIONS OF {0}".format(year_link.text))
+        threads = [Thread(target=self.parser_year, args=[year_url]) for year_url in all_years_links]
 
-            # enter in the year publications page
-            page = self.get(year_url)
-            parser = BeautifulSoup(page.content, 'html.parser')
+        for t in threads:
+            t.start()
 
-            #get all publications of the year
-            if parser:
-                self.parser_timeline(parser)
-            
+        for t in threads:
+            t.join()
+
         return True
+
+    @login_required
+    def parser_year(self, year_url):
+        year_link = year_url.get('href')
+        logging.info("SCRAPPING ALL PUBLICATIONS OF {0}".format(year_url.text))
+        # enter in the year publications page
+        page = self.get(year_link)
+        parser = BeautifulSoup(page.content, 'html.parser')
+
+        #get all publications of the year
+        if parser:
+            self.parser_timeline(parser)
 
     @login_required
     def parser_timeline(self, base_parser):
