@@ -1,7 +1,7 @@
 import requests
 import re
 import logging
-from threading import Thread, Lock
+from threading import Thread
 from spider import settings
 from bs4 import BeautifulSoup
 from spider.utils import _get_reactions
@@ -14,7 +14,7 @@ class FacebookSpider:
     """
 
     logging.basicConfig(
-        level=logging.INFO, 
+        level=logging.INFO,
         format='%(asctime)s %(levelname)s: %(message)s',
         datefmt='%a, %d %b %Y %H:%M:%S',
     )
@@ -28,12 +28,12 @@ class FacebookSpider:
 
     def get_full_url(self, url):
         full_url = "{0}{1}".format(self.start_url, url)
-        
+
         return full_url
 
     def get(self, url):
         """
-            This method make a GET http request using a 
+            This method make a GET http request using a
             requests session.
         """
 
@@ -75,7 +75,7 @@ class FacebookSpider:
     @login_required
     def parser_perfil(self, base_parser):
         """
-            This parser search the user perfil page 
+            This parser search the user perfil page
             and go to the publications
         """
 
@@ -96,11 +96,14 @@ class FacebookSpider:
             for each year the parser go to the timeline
         """
 
-        all_years_links = base_parser.find_all('a', {'href':re.compile('yearSectionsYears')})
+        all_years_links = base_parser.find_all('a', {
+            'href': re.compile('yearSectionsYears')
+        })
 
-        print(len(all_years_links))
+        threads = []
 
-        threads = [Thread(target=self.parser_year, args=[year_url]) for year_url in all_years_links]
+        for year_url in all_years_links:
+            threads.append(Thread(target=self.parser_year, args=[year_url]))
 
         for t in threads:
             t.start()
@@ -118,7 +121,7 @@ class FacebookSpider:
         page = self.get(year_link)
         parser = BeautifulSoup(page.content, 'html.parser')
 
-        #get all publications of the year
+        # get all publications of the year
         if parser:
             self.parser_timeline(parser)
 
@@ -129,9 +132,13 @@ class FacebookSpider:
         """
 
         see_more = 1
-        
+
         while see_more:
-            all_publications = base_parser.find_all('a', text='História completa') # get all page publications
+            all_publications = base_parser.find_all(
+                'a',
+                text='História completa'
+            )
+
             for pub in all_publications:
                 # enter in the publication page detail
                 pub_link = pub.get('href')
@@ -139,15 +146,13 @@ class FacebookSpider:
                 parser = BeautifulSoup(page.content, 'html.parser')
                 pub_date = parser.find('abbr').text
                 pub_data = {}
-                    
+
                 # get the reactions link
-                reactions = parser.find('a', {'href':re.compile('/ufi/reaction/profile/browser/')})
+                reactions = parser.find('a', {
+                    'href': re.compile('/ufi/reaction/profile/browser/')
+                })
 
                 if reactions:
-                    if not reactions.text:
-                        reaction_type = "None"
-                        reaction_user = "None"
-
                     reactions_link = reactions.get('href')
 
                     pub_id = re.search(
@@ -160,17 +165,27 @@ class FacebookSpider:
                     pub_data['reactions'] = {}
 
                     pub_database = self.collection.find_one(pub_data['_id'])
-                    pub_data = _get_reactions(self.session, reactions_link, pub_data)
+                    pub_data = _get_reactions(
+                        self.session,
+                        reactions_link,
+                        pub_data
+                    )
 
-                    if pub_database:  
+                    if pub_database:
                         if pub_database != pub_data:
                             self.collection.update(pub_database, pub_data)
-                            logging.info("PUBLICATION UPDATED.\n{0}".format(pub_data))
+                            logging.info(
+                                "PUBLICATION UPDATED.\n{0}".format(pub_data)
+                            )
                         else:
-                            logging.info("THE PUBLICATION HAS ALREADY BEEN SCRAPED.")
+                            logging.info(
+                                "THE PUBLICATION HAS ALREADY BEEN SCRAPED."
+                            )
                     else:
-                        logging.info("PUBLICATION SCRAPED.\n{0}".format(pub_data))
-                
+                        logging.info(
+                            "PUBLICATION SCRAPED.\n{0}".format(pub_data)
+                        )
+
                 if not pub_database:
                     self.collection.insert_one(pub_data).inserted_id
                     logging.info("PUBLICATION SCRAPED.\n{0}".format(pub_data))
