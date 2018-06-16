@@ -5,7 +5,6 @@ from concurrent.futures import ThreadPoolExecutor
 from spider import settings
 from bs4 import BeautifulSoup
 from spider.utils import _get_reactions
-from spider.decorators.auth import login_required
 
 
 class FacebookSpider:
@@ -62,19 +61,19 @@ class FacebookSpider:
 
         logging.info("LOGIN SUCCESSFUL!")
         self.is_logged_in = True
-        return True
 
-    @login_required
     def crawl(self, *args, **kwargs):
+        if not self.is_logged_in:
+            logging.warn("YOU MUST SIGN ON FACEBOOK.")
+            return False
+
         home_page = self.get('/home.php')
         parser = BeautifulSoup(home_page.content, 'html.parser')
 
         self.parser_perfil(parser)
 
         logging.info("FINISHED THE FACEBOOK CRAWL .")
-        return True
 
-    @login_required
     def parser_perfil(self, base_parser):
         """
             This parser search the user perfil page
@@ -89,9 +88,7 @@ class FacebookSpider:
 
         self.parser_years_publications(parser)
 
-        return True
 
-    @login_required
     def parser_years_publications(self, base_parser):
         """
             This parser find all the publications years,
@@ -108,9 +105,6 @@ class FacebookSpider:
             for year_link in all_years_links:
                 executor.submit(self.parser_year, year_link)
 
-        return True
-
-    @login_required
     def parser_year(self, year_url):
         year_link = year_url.get('href')
         logging.info("SCRAPPING ALL PUBLICATIONS OF {0}".format(year_url.text))
@@ -122,15 +116,14 @@ class FacebookSpider:
         if parser:
             self.parser_timeline(parser)
 
-    @login_required
     def parser_timeline(self, base_parser):
         """
             This parser scrap all publications of a year.
         """
 
-        see_more = 1
+        see_more_publications = True
 
-        while see_more:
+        while see_more_publications:
             all_publications = base_parser.find_all(
                 'a',
                 text='História completa'
@@ -195,5 +188,4 @@ class FacebookSpider:
                 page = self.get(see_more_link)
                 base_parser = BeautifulSoup(page.content, 'html.parser')
             else:
-                see_more = 0
-        return True
+                see_more_publications = False
