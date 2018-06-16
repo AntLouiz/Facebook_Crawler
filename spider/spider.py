@@ -1,7 +1,7 @@
 import requests
 import re
 import logging
-from threading import Thread
+from concurrent.futures import as_completed, ThreadPoolExecutor
 from spider import settings
 from bs4 import BeautifulSoup
 from spider.utils import _get_reactions
@@ -102,16 +102,11 @@ class FacebookSpider:
             'href': re.compile('end_time')
         })
 
-        threads = []
+        max_threads = len(all_years_links)
 
-        for year_url in all_years_links:
-            threads.append(Thread(target=self.parser_year, args=[year_url]))
-
-        for t in threads:
-            t.start()
-
-        for t in threads:
-            t.join()
+        with ThreadPoolExecutor(max_workers=max_threads) as executor:
+            for year_link in all_years_links:
+                executor.submit(self.parser_year, year_link)
 
         return True
 
