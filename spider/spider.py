@@ -52,8 +52,10 @@ class FacebookSpider:
 
         page = self.get('/home.php')
         parser = BeautifulSoup(page.content, 'html.parser')
+        one_click_login_button = parser.find('a', href=re.compile('/login/save-device/cancel/'))
+        home_page = parser.find('a', text='Página inicial')
 
-        if not parser.find('a', text='Página inicial'):
+        if not (home_page or one_click_login_button):
             logging.error("FAILED TO SIGN IN ON FACEBOOK.")
             self.is_logged_in = False
             return False
@@ -97,7 +99,7 @@ class FacebookSpider:
         """
 
         all_years_links = base_parser.find_all('a', {
-            'href': re.compile('yearSectionsYears')
+            'href': re.compile('end_time')
         })
 
         threads = []
@@ -144,7 +146,13 @@ class FacebookSpider:
                 pub_link = pub.get('href')
                 page = self.get(pub_link)
                 parser = BeautifulSoup(page.content, 'html.parser')
-                pub_date = parser.find('abbr').text
+
+                try:
+                    pub_date = parser.find('abbr').text
+
+                except AttributeError:
+                    pub_date = 'unknown'
+
                 pub_data = {}
 
                 # get the reactions link
@@ -175,21 +183,16 @@ class FacebookSpider:
                         if pub_database != pub_data:
                             self.collection.update(pub_database, pub_data)
                             logging.info(
-                                "PUBLICATION UPDATED.\n{0}".format(pub_data)
-                            )
-                        else:
-                            logging.info(
-                                "THE PUBLICATION HAS ALREADY BEEN SCRAPED."
+                                "Publication updated.\n{0}".format(pub_data)
                             )
                     else:
                         logging.info(
-                            "PUBLICATION SCRAPED.\n{0}".format(pub_data)
+                            "A new publication scrapped:\n{0}".format(pub_data)
                         )
 
                 if not pub_database:
                     self.collection.insert_one(pub_data).inserted_id
-                    logging.info("PUBLICATION SCRAPED.\n{0}".format(pub_data))
-                    print(pub_data)
+                    logging.info("A new publication scrapped:\n{0}".format(pub_data))
 
             see_more_parser = base_parser.find('a', text='Mostrar mais')
             if see_more_parser:
