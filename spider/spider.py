@@ -1,7 +1,7 @@
 import requests
 import re
 import logging
-from concurrent.futures import as_completed, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from spider import settings
 from bs4 import BeautifulSoup
 from spider.utils import _get_reactions
