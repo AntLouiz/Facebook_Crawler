@@ -42,7 +42,7 @@ class FacebookSpider:
         return page_response
 
     def login(self, email, password):
-        logging.info("TRYING TO SIGN IN ON FACEBOOK...")
+        logging.info("Trying to sign in on facebook.")
 
         self.session.post('https://m.facebook.com/login.php', data={
             'email': email,
@@ -55,16 +55,16 @@ class FacebookSpider:
         home_page = parser.find('a', text='Página inicial')
 
         if not (home_page or one_click_login_button):
-            logging.error("FAILED TO SIGN IN ON FACEBOOK.")
+            logging.error("Failed to sign in.")
             self.is_logged_in = False
             return False
 
-        logging.info("LOGIN SUCCESSFUL!")
+        logging.info("Login successful.")
         self.is_logged_in = True
 
     def crawl(self, *args, **kwargs):
         if not self.is_logged_in:
-            logging.warn("YOU MUST SIGN ON FACEBOOK.")
+            logging.warn("Sign in problems, wrog credentials.")
             return False
 
         home_page = self.get('/home.php')
@@ -72,7 +72,7 @@ class FacebookSpider:
 
         self.parser_perfil(parser)
 
-        logging.info("FINISHED THE FACEBOOK CRAWL .")
+        logging.info("Finished the crawl.")
 
     def parser_perfil(self, base_parser):
         """
@@ -87,7 +87,6 @@ class FacebookSpider:
         logging.info("Entering in the user perfil page.")
 
         self.parser_years_publications(parser)
-
 
     def parser_years_publications(self, base_parser):
         """
@@ -107,7 +106,7 @@ class FacebookSpider:
 
     def parser_year(self, year_url):
         year_link = year_url.get('href')
-        logging.info("SCRAPPING ALL PUBLICATIONS OF {0}".format(year_url.text))
+        logging.info("Scraping all publications of {0}".format(year_url.text))
         # enter in the year publications page
         page = self.get(year_link)
         parser = BeautifulSoup(page.content, 'html.parser')
@@ -171,16 +170,16 @@ class FacebookSpider:
                         if pub_database != pub_data:
                             self.collection.update(pub_database, pub_data)
                             logging.info(
-                                "Publication updated.\n{0}".format(pub_data)
+                                "Publication updated: {0}".format(pub_data)
                             )
                     else:
                         logging.info(
-                            "A new publication scrapped:\n{0}".format(pub_data)
+                            "A new publication scrapped", pub_data
                         )
 
                 if not pub_database:
                     self.collection.insert_one(pub_data).inserted_id
-                    logging.info("A new publication scrapped:\n{0}".format(pub_data))
+                    logging.info("A new publication scrapped.", pub_data)
 
             see_more_parser = base_parser.find('a', text='Mostrar mais')
             if see_more_parser:
